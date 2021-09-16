@@ -1,5 +1,8 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:tic_tac_toe/board.dart';
+import 'package:tic_tac_toe/game_over_widget.dart';
 import 'package:tic_tac_toe/player.dart';
 import 'package:tic_tac_toe/position.dart';
 
@@ -16,14 +19,15 @@ class GamePage extends StatefulWidget {
 
 class _GamePageState extends State<GamePage> {
   Board _board = Board();
-  final Player _player1 = Player(isX: true);
-  final Player _player2 = Player(isX: false);
+  final Player _manPlayer = Player(isX: true);
+  final Player _machinePlayer = Player(isX: false);
   Player? _winner;
   bool _isGameOver = false;
 
   @override
   Widget build(BuildContext context) {
-    const size = 80.0;
+    final tileSize =
+        min(100.0, MediaQuery.of(context).size.shortestSide * 0.66 / 3);
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.title),
@@ -37,96 +41,38 @@ class _GamePageState extends State<GamePage> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   for (int i = 0; i < 3; i++)
-                    Builder(builder: (context) {
-                      final position = _board.positions[i];
-                      return TileWidget(
-                        key: Key('${position.id}'),
-                        isX: position.player?.isX ?? false,
-                        checked: position.player != null,
-                        size: size,
-                        onTap: () => _handleMove(position, _player1),
-                      );
-                    }),
+                    _buildTile(_board.positions[i], tileSize),
                 ],
               ),
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   for (int i = 3; i < 6; i++)
-                    Builder(builder: (context) {
-                      final position = _board.positions[i];
-                      return TileWidget(
-                        key: Key('${position.id}'),
-                        isX: position.player?.isX ?? false,
-                        checked: position.player != null,
-                        size: size,
-                        onTap: () => _handleMove(position, _player1),
-                      );
-                    }),
+                    _buildTile(_board.positions[i], tileSize),
                 ],
               ),
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   for (int i = 6; i < 9; i++)
-                    Builder(builder: (context) {
-                      final position = _board.positions[i];
-                      return TileWidget(
-                        key: Key('${position.id}'),
-                        isX: position.player?.isX ?? false,
-                        checked: position.player != null,
-                        size: size,
-                        onTap: () => _handleMove(position, _player1),
-                      );
-                    }),
+                    _buildTile(_board.positions[i], tileSize),
                 ],
               ),
-              const SizedBox(height: size),
+              SizedBox(height: tileSize),
             ],
           ),
           if (_isGameOver)
-            Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Container(
-                    width: size * 3,
-                    height: size * 2.5,
-                    child: Center(
-                      child: Text(
-                        _winner == null
-                            ? 'It\'s a Draw!'
-                            : 'You ${_winner == _player1 ? 'Won!' : 'Lost :('}',
-                        style: const TextStyle(
-                            fontSize: 25,
-                            color: Colors.black87,
-                            height: 2,
-                            fontWeight: FontWeight.bold),
-                        textAlign: TextAlign.center,
-                      ),
-                    ),
-                    padding: const EdgeInsets.all(24),
-                    decoration: BoxDecoration(
-                      color: Colors.greenAccent.withOpacity(0.85),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                  ),
-                  const SizedBox(height: size),
-                ],
-              ),
+            GameOverWidget(
+              size: tileSize,
+              isDraw: _winner == null,
+              isWin: _winner == _manPlayer,
+              onTap: _playNewGame,
             ),
         ],
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () {
-          setState(() {
-            // reset state to restart the game
-            _board = Board();
-            _winner = null;
-            _isGameOver = false;
-          });
-        },
+        onPressed: _playNewGame,
         tooltip: 'Start Over',
         icon: const Icon(Icons.restart_alt),
         label: const Text('New Game'),
@@ -134,23 +80,42 @@ class _GamePageState extends State<GamePage> {
     );
   }
 
+  Widget _buildTile(Position position, double size) {
+    return TileWidget(
+      key: Key('${position.id}'),
+      isX: position.player?.isX ?? false,
+      checked: position.player != null,
+      size: size,
+      onTap: () => _handleMove(position, _manPlayer),
+    );
+  }
+
   void _handleMove(Position position, Player player) {
     if (_winner != null) return; // game over
     if (position.player != null) return; // position is not empty
     setState(() {
-      position.player = _player1;
-      _player2.nextMove(_board);
+      position.player = _manPlayer;
+      _machinePlayer.nextMove(_board);
       _checkGameOver();
     });
   }
 
   void _checkGameOver() {
-    if (_player1.hasWinner(_board)) {
-      _winner = _player1;
-    } else if (_player2.hasWinner(_board)) {
-      _winner = _player2;
+    if (_manPlayer.hasWinner(_board)) {
+      _winner = _manPlayer;
+    } else if (_machinePlayer.hasWinner(_board)) {
+      _winner = _machinePlayer;
     }
     _isGameOver = _winner != null ||
         _board.positions.where((p) => p.player == null).isEmpty;
+  }
+
+  void _playNewGame() {
+    setState(() {
+      // reset state to restart the game
+      _board = Board();
+      _winner = null;
+      _isGameOver = false;
+    });
   }
 }

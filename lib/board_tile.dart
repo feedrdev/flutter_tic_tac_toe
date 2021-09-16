@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+/// Widget that renders a clickable game tile
 class TileWidget extends StatelessWidget {
   const TileWidget({
     Key? key,
