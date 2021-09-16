@@ -12,4 +12,6 @@ class Board {
     Position.bottomCenter(),
     Position.bottomRight(),
   ];
+
+  bool isClean() => positions.every((element) => element.isEmpty);
 }

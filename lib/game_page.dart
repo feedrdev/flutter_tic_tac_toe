@@ -71,12 +71,14 @@ class _GamePageState extends State<GamePage> {
         ],
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _playNewGame,
-        tooltip: 'Start Over',
-        icon: const Icon(Icons.restart_alt),
-        label: const Text('New Game'),
-      ), // This trailing comma makes auto-formatting nicer for build methods.
+      floatingActionButton: _board.isClean()
+          ? null
+          : FloatingActionButton.extended(
+              onPressed: _playNewGame,
+              tooltip: 'Start Over',
+              //icon: const Icon(Icons.restart_alt),
+              label: const Text('Start Over'),
+            ), // This trailing comma makes auto-formatting nicer for build methods.
     );
   }
 
