@@ -32,9 +32,10 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   Board _board = Board();
-  Player _player1 = Player(isX: true);
-  Player _player2 = Player(isX: false);
+  final Player _player1 = Player(isX: true);
+  final Player _player2 = Player(isX: false);
   Player? _winner;
+  bool _isGameOver = false;
 
   void _handleMove(Position position, Player player) {
     if (_winner != null) return; // game over
@@ -49,27 +50,16 @@ class _HomePageState extends State<HomePage> {
   void _checkGameOver() {
     final player1Positions =
         _board.positions.where((p) => p.player == _player1).map((e) => e.id);
-    if (_has3InARow(player1Positions)) {
+    if (_hasWinner(player1Positions)) {
       _winner = _player1;
     } else {
       final player2Positions =
           _board.positions.where((p) => p.player == _player2).map((e) => e.id);
-      if (_has3InARow(player2Positions)) {
+      if (_hasWinner(player2Positions)) {
         _winner = _player2;
       }
     }
-  }
-
-  bool _has3InARow(Iterable<int> positions) {
-    final set = positions.toSet();
-    return set.containsAll([1, 2, 3]) ||
-        set.containsAll([4, 5, 6]) ||
-        set.containsAll([7, 8, 9]) ||
-        set.containsAll([1, 4, 7]) ||
-        set.containsAll([2, 5, 8]) ||
-        set.containsAll([3, 6, 9]) ||
-        set.containsAll([1, 5, 9]) ||
-        set.containsAll([3, 5, 7]);
+    _isGameOver = _board.positions.where((p) => p.player == null).isEmpty;
   }
 
   @override
@@ -135,29 +125,35 @@ class _HomePageState extends State<HomePage> {
               const SizedBox(height: size),
             ],
           ),
-          if (_winner != null)
-            Align(
-              alignment: Alignment.center,
-              child: Container(
-                width: size * 3,
-                height: size * 3,
-                child: Center(
-                  child: Text(
-                    'Game Over\n'
-                    'You ${_winner == _player1 ? 'Won!' : 'Lost :('}',
-                    style: const TextStyle(
-                        fontSize: 20,
-                        color: Colors.black54,
-                        height: 2,
-                        fontWeight: FontWeight.bold),
-                    textAlign: TextAlign.center,
+          if (_isGameOver)
+            Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Container(
+                    width: size * 3,
+                    height: size * 2.5,
+                    child: Center(
+                      child: Text(
+                        _winner == null
+                            ? 'It\'s a Draw!'
+                            : 'You ${_winner == _player1 ? 'Won!' : 'Lost :('}',
+                        style: const TextStyle(
+                            fontSize: 25,
+                            color: Colors.black87,
+                            height: 2,
+                            fontWeight: FontWeight.bold),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                    padding: const EdgeInsets.all(24),
+                    decoration: BoxDecoration(
+                      color: Colors.greenAccent.withOpacity(0.85),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
                   ),
-                ),
-                padding: const EdgeInsets.all(24),
-                decoration: BoxDecoration(
-                  color: Colors.lime.withOpacity(0.7),
-                  borderRadius: BorderRadius.circular(10),
-                ),
+                  const SizedBox(height: size),
+                ],
               ),
             ),
         ],
@@ -166,8 +162,10 @@ class _HomePageState extends State<HomePage> {
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () {
           setState(() {
+            // reset state to restart the game
             _board = Board();
             _winner = null;
+            _isGameOver = false;
           });
         },
         tooltip: 'Start Over',
@@ -226,15 +224,15 @@ class TileWidget extends StatelessWidget {
 
 class Board {
   List<Position> positions = [
-    Position(1),
-    Position(2),
-    Position(3),
-    Position(4),
-    Position(5),
-    Position(6),
-    Position(7),
-    Position(8),
-    Position(9),
+    Position.topLeft(),
+    Position.topCenter(),
+    Position.topRight(),
+    Position.centerLeft(),
+    Position.center(),
+    Position.centerRight(),
+    Position.bottomLeft(),
+    Position.bottomCenter(),
+    Position.bottomRight(),
   ];
 }
 
@@ -244,22 +242,155 @@ class Position {
 
   Position(this.id);
 
-  bool isEmpty() => (player == null);
+  Position.none() : this(0);
+
+  Position.topLeft() : this(1);
+
+  Position.topCenter() : this(2);
+
+  Position.topRight() : this(3);
+
+  Position.centerLeft() : this(4);
+
+  Position.center() : this(5);
+
+  Position.centerRight() : this(6);
+
+  Position.bottomLeft() : this(7);
+
+  Position.bottomCenter() : this(8);
+
+  Position.bottomRight() : this(9);
+
+  bool get isEmpty => (player == null);
+
+  bool get isValid => id != 0;
+
+  @override
+  bool operator ==(Object other) {
+    return other is Position && id == other.id;
+  }
+
+  @override
+  int get hashCode => hashValues(id, player);
 }
 
 class Player {
-  final bool isX;
+  final bool isX; // X or O
   List<Position> positions = [];
 
   Player({required this.isX});
 
   void nextMove(Board board) {
-    final next = board.positions
-        .firstWhere((value) => value.player == null, orElse: () => Position(0));
-    if (next.id > 0) {
+    Position next;
+    next = _canWin(board);
+    if (next.isValid) {
+      debugPrint('Can win @${next.id}!');
+      next.player = this;
+      return;
+    }
+    next = _canLose(board);
+    if (next.isValid) {
+      debugPrint('Can lose @${next.id}!');
+      next.player = this;
+      return;
+    }
+    next = _canOtherFork(board);
+    if (next.isValid) {
+      debugPrint('Other can fork @${next.id}');
+      next.player = this;
+      return;
+    }
+    next = _canGrabCenter(board);
+    if (next.isValid) {
+      debugPrint('Grabbing empty center!');
+      next.player = this;
+      return;
+    }
+    next = _canGrabCorner(board);
+    if (next.isValid) {
+      debugPrint('Grabbing empty corner ${next.id}!');
+      next.player = this;
+      return;
+    }
+    next = board.positions.firstWhere(
+      (p) => p.isEmpty,
+      orElse: () => Position.none(),
+    );
+    if (next.isValid) {
+      debugPrint('Grabbing free position @${next.id}');
       next.player = this;
     }
   }
 
-  Position? _canWin(Board board) {}
+  Position _canWin(Board board) {
+    final myPositions =
+        board.positions.where((e) => e.player == this).map((e) => e.id).toSet();
+    final freePositions = board.positions.where((e) => e.isEmpty).toSet();
+    return freePositions.firstWhere((position) {
+      final set = Set<int>.from(myPositions)..add(position.id);
+      return _hasWinner(set);
+    }, orElse: () => Position.none());
+  }
+
+  Position _canLose(Board board) {
+    final otherPositions = board.positions
+        .where((e) => e.player != null && e.player != this)
+        .map((e) => e.id)
+        .toSet();
+    final freePositions = board.positions.where((e) => e.isEmpty).toSet();
+    return freePositions.firstWhere((p) {
+      final set = Set<int>.from(otherPositions)..add(p.id);
+      return _hasWinner(set);
+    }, orElse: () => Position.none());
+  }
+
+  Position _canOtherFork(Board board) {
+    final otherPositions = board.positions
+        .where((e) => e.player != null && e.player != this)
+        .map((e) => e.id)
+        .toSet();
+    debugPrint(otherPositions.toString());
+    final freePositions = board.positions.where((e) => e.isEmpty).toSet();
+    return freePositions.firstWhere(
+      (e) {
+        final set = Set<int>.from(otherPositions)..add(e.id);
+        return _countWinnersIn(set) > 1;
+      },
+      orElse: () => Position.none(),
+    );
+  }
+
+  Position _canGrabCenter(Board board) =>
+      board.positions[4].isEmpty ? board.positions[4] : Position.none();
+
+  Position _canGrabCorner(Board board) {
+    final corners = [1, 3, 7, 9];
+    return board.positions.firstWhere(
+      (element) => element.isEmpty && corners.contains(element.id),
+      orElse: () => Position.none(),
+    );
+  }
+}
+
+const winners = [
+  [1, 2, 3],
+  [4, 5, 6],
+  [7, 8, 9],
+  [1, 4, 7],
+  [2, 5, 8],
+  [3, 6, 9],
+  [1, 5, 9],
+  [3, 5, 7]
+];
+
+bool _hasWinner(Iterable<int> positions) {
+  final set = positions.toSet();
+  final first = winners.firstWhere((element) => set.containsAll(element),
+      orElse: () => []);
+  return first.isNotEmpty;
+}
+
+int _countWinnersIn(Set<int> set) {
+  return winners.where((element) => set.containsAll(element)).length;
 }
