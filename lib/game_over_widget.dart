@@ -45,7 +45,7 @@ class GameOverWidget extends StatelessWidget {
             ),
             onTap: onTap,
           ),
-          SizedBox(height: size),
+          Flexible(child: SizedBox(height: size)),
         ],
       ),
     );

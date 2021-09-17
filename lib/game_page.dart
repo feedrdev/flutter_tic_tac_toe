@@ -58,7 +58,7 @@ class _GamePageState extends State<GamePage> {
                     _buildTile(_board.positions[i], tileSize),
                 ],
               ),
-              SizedBox(height: tileSize),
+              Flexible(child: SizedBox(height: tileSize)),
             ],
           ),
           if (_isGameOver)
