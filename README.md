@@ -15,4 +15,7 @@ The machine always plays the "perfect" strategy to win:
 ## Getting Started
 
 Flutter SDK is required to build this project.
-Tested to build for iOS, Android or Web.
+Tested to build for iOS, Android. macOS and Web.
+
+Try out the hosted Web App here:
+https://tic-tac-toe-52f8d.firebaseapp.com/
